@@ -1,8 +1,3 @@
-/**
- * Mock Execution Layer for Meta Marketing API & Google Ads API
- * Returns realistic telemetry and mutation receipts.
- */
-
 export interface ToolExecutionResult {
   success: boolean;
   data: any;
@@ -10,11 +5,7 @@ export interface ToolExecutionResult {
 }
 
 export class AdPlatformMockExecutor {
-  /**
-   * Dispatches execution of an authorized tool call.
-   */
   public static async execute(toolName: string, args: Record<string, any>): Promise<ToolExecutionResult> {
-    // Simulate realistic network latency to ad networks
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     switch (toolName) {

@@ -2,15 +2,10 @@ import { ApprovalStatus, PendingAction, AgentRunState } from "./types.js";
 import { v4 as uuidv4 } from "uuid";
 import { MessageParam } from "@anthropic-ai/sdk/resources/messages.mjs";
 
-/**
- * State store managing pending approvals and agent execution states.
- * Enforces strict state machine transition invariants.
- */
 export class ApprovalStore {
   private approvals: Map<string, PendingAction> = new Map();
   private runs: Map<string, AgentRunState> = new Map();
 
-  // Allowed state machine transitions
   private static readonly VALID_TRANSITIONS: Record<ApprovalStatus, ApprovalStatus[]> = {
     PENDING: ["APPROVED", "REJECTED", "EXPIRED"],
     APPROVED: ["EXECUTING", "FAILED"],
@@ -21,9 +16,6 @@ export class ApprovalStore {
     EXPIRED: []
   };
 
-  /**
-   * Creates a new pending approval record.
-   */
   public createPendingApproval(params: {
     runId: string;
     toolUseId: string;
@@ -50,16 +42,10 @@ export class ApprovalStore {
     return action;
   }
 
-  /**
-   * Retrieves an approval by its ID.
-   */
   public getApproval(id: string): PendingAction | undefined {
     return this.approvals.get(id);
   }
 
-  /**
-   * Lists all approvals, optionally filtered by status.
-   */
   public listApprovals(statusFilter?: ApprovalStatus): PendingAction[] {
     const list = Array.from(this.approvals.values());
     if (statusFilter) {
@@ -68,9 +54,6 @@ export class ApprovalStore {
     return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
-  /**
-   * Transitions approval status with strict verification.
-   */
   public transitionStatus(
     id: string,
     nextStatus: ApprovalStatus,
@@ -100,8 +83,6 @@ export class ApprovalStore {
     this.approvals.set(id, action);
     return action;
   }
-
-  // --- Run Management ---
 
   public getOrCreateRun(runId: string, campaignId: string): AgentRunState {
     let run = this.runs.get(runId);

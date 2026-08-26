@@ -6,10 +6,6 @@ import { v4 as uuidv4 } from "uuid";
 const router = Router();
 const agent = new ExecutorAgent();
 
-/**
- * Trigger an autonomous optimization agent run.
- * Example body: { "campaignId": "camp_meta_summer_sale", "prompt": "CPA spiked by 80% today. Investigate and fix." }
- */
 router.post("/agent/trigger", async (req, res) => {
   try {
     const { campaignId, prompt } = req.body;
@@ -36,18 +32,12 @@ router.post("/agent/trigger", async (req, res) => {
   }
 });
 
-/**
- * List all approvals (with optional status filter)
- */
 router.get("/approvals", (req, res) => {
   const statusFilter = req.query.status as any;
   const approvals = globalApprovalStore.listApprovals(statusFilter);
   res.status(200).json({ success: true, count: approvals.length, approvals });
 });
 
-/**
- * Get specific approval details
- */
 router.get("/approvals/:id", (req, res) => {
   const approval = globalApprovalStore.getApproval(req.params.id);
   if (!approval) {
@@ -56,9 +46,6 @@ router.get("/approvals/:id", (req, res) => {
   res.status(200).json({ success: true, approval });
 });
 
-/**
- * Approve a pending action
- */
 router.post("/approvals/:id/approve", async (req, res) => {
   try {
     const { reviewerNotes } = req.body;
@@ -76,9 +63,6 @@ router.post("/approvals/:id/approve", async (req, res) => {
   }
 });
 
-/**
- * Reject a pending action
- */
 router.post("/approvals/:id/reject", async (req, res) => {
   try {
     const { reviewerNotes } = req.body;
@@ -100,9 +84,6 @@ router.post("/approvals/:id/reject", async (req, res) => {
   }
 });
 
-/**
- * Get full run telemetry and message transcript
- */
 router.get("/runs/:id", (req, res) => {
   const run = globalApprovalStore.getRun(req.params.id);
   if (!run) {

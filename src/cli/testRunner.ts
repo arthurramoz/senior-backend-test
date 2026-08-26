@@ -23,7 +23,6 @@ async function runCliDemo() {
   console.log(`🤖 Starting Agent Run for Campaign: ${campaignId}`);
   console.log(`🎯 Prompt: "Campaign ${campaignId} is experiencing a sudden CPA spike. Investigate performance metrics and take corrective action."\n`);
 
-  // 1. Start the agent run
   const result = await agent.startRun({
     runId,
     campaignId,

@@ -20,9 +20,6 @@ export class ExecutorAgent {
     this.anthropic = new Anthropic({ apiKey });
   }
 
-  /**
-   * Initializes or continues an agent run.
-   */
   public async startRun(params: {
     runId: string;
     campaignId: string;
@@ -30,7 +27,6 @@ export class ExecutorAgent {
   }): Promise<{ status: "COMPLETED" | "AWAITING_APPROVAL" | "FAILED"; run: AgentRunState; pendingAction?: PendingAction }> {
     const run = globalApprovalStore.getOrCreateRun(params.runId, params.campaignId);
     
-    // Add initial user prompt if starting fresh
     if (run.messages.length === 0) {
       run.messages.push({
         role: "user",
@@ -42,9 +38,6 @@ export class ExecutorAgent {
     return this.runAgentLoop(run);
   }
 
-  /**
-   * Core Autonomous Agent Loop with Tool Interception Gate
-   */
   private async runAgentLoop(
     run: AgentRunState
   ): Promise<{ status: "COMPLETED" | "AWAITING_APPROVAL" | "FAILED"; run: AgentRunState; pendingAction?: PendingAction }> {
@@ -83,13 +76,11 @@ Always explain why you take each action.`;
         }
       }
 
-      // Add assistant response to history
       run.messages.push({
         role: "assistant",
         content: response.content
       });
 
-      // Extract text thoughts for logging
       const textBlocks = (response.content as any[]).filter((c: any) => c.type === "text");
       for (const text of textBlocks) {
         if ("text" in text) {
@@ -97,7 +88,6 @@ Always explain why you take each action.`;
         }
       }
 
-      // Check if Claude requested any tool calls
       const toolUseBlocks = (response.content as any[]).filter((c: any) => c.type === "tool_use") as ToolUseBlock[];
 
       if (toolUseBlocks.length === 0 || response.stop_reason === "end_turn") {
@@ -107,7 +97,6 @@ Always explain why you take each action.`;
         return { status: "COMPLETED", run };
       }
 
-      // Process tool calls
       const toolResultContents: any[] = [];
 
       for (const toolUse of toolUseBlocks) {
@@ -117,11 +106,9 @@ Always explain why you take each action.`;
 
         run.logs.push(`[${new Date().toISOString()}] Evaluating tool: "${toolName}" (Risk: ${policy.riskLevel})`);
 
-        // Check if tool is HIGH_IMPACT and requires approval
         if (policy.requiresApproval) {
           run.logs.push(`[${new Date().toISOString()}] ⚠️ HIGH-IMPACT ACTION DETECTED. Intercepting via Approval Gate...`);
           
-          // Create pending approval
           const pendingAction = globalApprovalStore.createPendingApproval({
             runId: run.runId,
             toolUseId: toolUse.id,
@@ -148,7 +135,6 @@ Always explain why you take each action.`;
           };
         }
 
-        // LOW_IMPACT tool: Execute immediately
         run.logs.push(`[${new Date().toISOString()}] Auto-executing safe tool: "${toolName}"...`);
         try {
           const execResult = await AdPlatformMockExecutor.execute(toolName, toolArgs);
@@ -169,7 +155,6 @@ Always explain why you take each action.`;
         }
       }
 
-      // Append all tool results to message history and continue loop
       run.messages.push({
         role: "user",
         content: toolResultContents
@@ -181,9 +166,6 @@ Always explain why you take each action.`;
     return { status: "COMPLETED", run };
   }
 
-  /**
-   * Resumes an agent loop after a human approves or rejects a pending action.
-   */
   public async resumeAfterApproval(
     approvalId: string,
     decision: "APPROVE" | "REJECT",
@@ -198,14 +180,12 @@ Always explain why you take each action.`;
     let toolResultBlock: any;
 
     if (decision === "APPROVE") {
-      // 1. Move to APPROVED -> EXECUTING
       globalApprovalStore.transitionStatus(approvalId, "APPROVED", "Human approved action", { reviewerNotes });
       globalApprovalStore.transitionStatus(approvalId, "EXECUTING", "Executing mutation against ad platform");
 
       run.logs.push(`[${new Date().toISOString()}] Action ${approvalId} APPROVED by human. Executing "${action.toolName}"...`);
 
       try {
-        // Execute the mock mutation
         const execResult = await AdPlatformMockExecutor.execute(action.toolName, action.toolArgs);
         
         globalApprovalStore.transitionStatus(approvalId, "EXECUTED", "Mutation executed successfully", {
@@ -228,7 +208,6 @@ Always explain why you take each action.`;
         };
       }
     } else {
-      // REJECTED
       globalApprovalStore.transitionStatus(approvalId, "REJECTED", "Human rejected action", { reviewerNotes });
       run.logs.push(`[${new Date().toISOString()}] Action ${approvalId} REJECTED by human. Reason: ${reviewerNotes || "No reason provided"}`);
 
@@ -240,7 +219,6 @@ Always explain why you take each action.`;
       };
     }
 
-    // Append human decision result into conversation history
     run.messages.push({
       role: "user",
       content: [toolResultBlock]
@@ -250,7 +228,6 @@ Always explain why you take each action.`;
     run.pendingApprovalId = undefined;
     globalApprovalStore.updateRun(run.runId, { status: "RUNNING", pendingApprovalId: undefined, messages: run.messages, logs: run.logs });
 
-    // Resume the agent loop with the updated history
     const loopResult = await this.runAgentLoop(run);
     return {
       ...loopResult,
@@ -258,14 +235,9 @@ Always explain why you take each action.`;
     };
   }
 
-  /**
-   * Deterministic Claude Tool-Use Simulator.
-   * Emulates exact Claude 3.5 Sonnet tool-use messages for testing when API key is pending renewal.
-   */
   private simulateClaudeReasoning(messages: MessageParam[]): any {
     const lastMessage = messages[messages.length - 1];
 
-    // If starting fresh (user initial prompt) -> Claude queries metrics first (Low-impact)
     if (messages.length === 1 && lastMessage.role === "user") {
       return {
         stop_reason: "tool_use",
@@ -288,7 +260,6 @@ Always explain why you take each action.`;
       };
     }
 
-    // If last message has tool_result from metrics -> Claude decides to update budget (High-impact mutation)
     if (lastMessage.role === "user" && Array.isArray(lastMessage.content)) {
       const toolResults = lastMessage.content as any[];
       const hasMetricResult = toolResults.some((t) => t.type === "tool_result" && !t.is_error && !t.content.includes("rejected"));

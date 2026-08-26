@@ -8,11 +8,6 @@ export interface ToolPolicy {
   description: string;
 }
 
-/**
- * Registry of tool safety policies.
- * Low impact tools execute autonomously.
- * High impact tools (financial/traffic mutations) are intercepted by the Approval Gate.
- */
 export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   fetch_campaign_metrics: {
     riskLevel: "LOW_IMPACT",
@@ -41,9 +36,6 @@ export const TOOL_POLICIES: Record<string, ToolPolicy> = {
   }
 };
 
-/**
- * Anthropic Claude Tool Schemas
- */
 export const AGENT_TOOLS: Tool[] = [
   {
     name: "fetch_campaign_metrics",
